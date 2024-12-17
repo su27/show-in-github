@@ -10,7 +10,9 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:github-file-url.copyGitHubUrl"
+    "onCommand:github-file-url.copyGitHubUrl",
+    "onCommand:github-file-url.showGitBlame",
+    "onCommand:github-file-url.showCommit"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -22,6 +24,10 @@
       {
         "command": "github-file-url.showGitBlame",
         "title": "显示 Git Blame 信息"
+      },
+      {
+        "command": "github-file-url.showCommit",
+        "title": "显示当前行的 Commit 信息"
       }
     ],
     "keybindings": [
@@ -34,6 +40,11 @@
         "command": "github-file-url.showGitBlame",
         "key": ", b l",
         "mac": ", b l"
+      },
+      {
+        "command": "github-file-url.showCommit",
+        "key": ", s",
+        "mac": ", s"
       }
     ]
   },

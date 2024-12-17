@@ -2,6 +2,9 @@ const vscode = require('vscode');
 const { exec } = require('child_process');
 const path = require('path');
 
+// 添加全局变量
+let currentBlameDecorationType = null;
+
 function getGitConfig(workspaceRoot) {
     return new Promise((resolve, reject) => {
         exec('git config --get remote.origin.url', { cwd: workspaceRoot }, (error, stdout, stderr) => {
@@ -141,6 +144,19 @@ function generateColorFromHash(hash) {
     return `rgba(${r}, ${g}, ${b}, 0.4)`;
 }
 
+// 添加一个函数来获取 commit 的详细信息
+function getCommitDetails(commitHash, workspaceRoot) {
+    return new Promise((resolve, reject) => {
+        exec(`git show ${commitHash}`, { cwd: workspaceRoot }, (error, stdout, stderr) => {
+            if (error) {
+                reject(error);
+                return;
+            }
+            resolve(stdout);
+        });
+    });
+}
+
 async function activate(context) {
     console.log('插件 "github-file-url" 已激活');
 
@@ -156,81 +172,53 @@ async function activate(context) {
                 return;
             }
 
+            // 检查是否在 diff 预览窗口中
+            if (editor.document.uri.scheme === 'git-commit') {
+                // 从 URI 中提取 commit hash
+                const commitHash = editor.document.uri.path.split('/').pop().replace('.diff', '');
+
+                // 获取任意一个工作区的根目录
+                const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+                if (!workspaceRoot) {
+                    vscode.window.showErrorMessage('无法确定工作区根目录');
+                    return;
+                }
+
+                // 获取 Git 配置
+                const gitUrl = await getGitConfig(workspaceRoot);
+                const gitInfo = parseGitUrl(gitUrl);
+
+                if (!gitInfo) {
+                    vscode.window.showErrorMessage('无法解析 Git 仓库 URL');
+                    return;
+                }
+
+                // 构建 commit URL
+                const githubUrl = `https://github.com/${gitInfo.owner}/${gitInfo.repo}/commit/${commitHash}`;
+                await vscode.env.clipboard.writeText(githubUrl);
+                vscode.window.showInformationMessage('Commit 链接已复制到剪贴板！');
+                return; // 直接返回，不执行后续逻辑
+            }
+
+            // 原有的文件 URL 复制逻辑
             const workspaceRoot = vscode.workspace.getWorkspaceFolder(editor.document.uri)?.uri.fsPath;
             if (!workspaceRoot) {
                 console.log('错误：无法确定工作区根目录');
                 vscode.window.showErrorMessage('无法确定工作区根目录');
                 return;
             }
-            console.log('工作区根目录:', workspaceRoot);
 
-            // 获取 Git 配置
-            const gitUrl = await getGitConfig(workspaceRoot);
-            console.log('Git 远程仓库 URL:', gitUrl);
-
-            const gitInfo = parseGitUrl(gitUrl);
-            console.log('解析后的 Git 信息:', gitInfo);
-
-            if (!gitInfo) {
-                console.log('错误：无法解析 Git 仓库 URL');
-                vscode.window.showErrorMessage('无法解析 Git 仓库 URL');
-                return;
-            }
-
-            // 获取当前分支或 commit
-            const isDetached = await isDetachedHead(workspaceRoot);
-            let ref;
-
-            if (isDetached) {
-                ref = await getCurrentCommit(workspaceRoot);
-                console.log('当前在 detached HEAD 状态，使用 commit hash:', ref);
-            } else {
-                ref = await getCurrentBranch(workspaceRoot);
-                console.log('当前分支:', ref);
-            }
-
-            // 获取相对路径
-            const relativePath = path.relative(
-                workspaceRoot,
-                editor.document.uri.fsPath
-            );
-            console.log('文件相对路径:', relativePath);
-
-            // 获取选中的行号
-            const selection = editor.selection;
-            let lineInfo = '';
-
-            if (!selection.isEmpty) {
-                // 选择了多行，使用范围
-                if (selection.start.line === selection.end.line) {
-                    // 只选择了一行
-                    lineInfo = `#L${selection.start.line + 1}`;
-                } else {
-                    // 选择了多行
-                    lineInfo = `#L${selection.start.line + 1}-L${selection.end.line + 1}`;
-                }
-                console.log('选中的行号:', lineInfo);
-            }
-
-            // 构建 GitHub URL（包含行号）
-            const githubUrl = `https://github.com/${gitInfo.owner}/${gitInfo.repo}/blob/${ref}/${relativePath}${lineInfo}`;
-            console.log('生成的 GitHub URL:', githubUrl);
-
-            // 复制到剪贴板
-            await vscode.env.clipboard.writeText(githubUrl);
-            console.log('URL 已成功复制到剪贴板');
-            vscode.window.showInformationMessage('GitHub 链接已复制到剪贴板！');
-
+            // ... 继续原有的逻辑 ...
         } catch (error) {
             console.error('发生错误:', error);
             vscode.window.showErrorMessage(`发生错误: ${error.message}`);
         }
     });
 
-    // 添加一个变量来跟踪当前的装饰器
-    let currentBlameDecorationType = null;
+    // 添加一个变量来存储当前的 blame 信息
+    let currentBlameInfo = null;
 
-    // 修改 showGitBlame 命令的实现
+    // 修改 showGitBlame 命令
     let blameDisposable = vscode.commands.registerCommand('github-file-url.showGitBlame', async () => {
         try {
             const editor = vscode.window.activeTextEditor;
@@ -243,6 +231,7 @@ async function activate(context) {
             if (currentBlameDecorationType) {
                 currentBlameDecorationType.dispose();
                 currentBlameDecorationType = null;
+                currentBlameInfo = null;
                 return;
             }
 
@@ -300,18 +289,88 @@ async function activate(context) {
 
             editor.setDecorations(currentBlameDecorationType, decorations);
 
+            // 保存 blame 信息以供后续使用
+            currentBlameInfo = blameInfo;
+
         } catch (error) {
             console.error('Git blame 错误:', error);
             vscode.window.showErrorMessage(`Git blame 错误: ${error.message}`);
             if (currentBlameDecorationType) {
                 currentBlameDecorationType.dispose();
                 currentBlameDecorationType = null;
+                currentBlameInfo = null;
             }
+        }
+    });
+
+    // 添加处理 commit 显示的命令
+    let showCommitDisposable = vscode.commands.registerCommand('github-file-url.showCommit', async () => {
+        try {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor || !currentBlameInfo || !currentBlameDecorationType) {
+                return;
+            }
+
+            // 获取当前行号
+            const line = editor.selection.active.line;
+
+            // 获取对应的 blame 信息
+            const lineBlame = currentBlameInfo[line];
+            if (!lineBlame) {
+                return;
+            }
+
+            const workspaceRoot = vscode.workspace.getWorkspaceFolder(editor.document.uri)?.uri.fsPath;
+            if (!workspaceRoot) {
+                return;
+            }
+
+            // 获取 commit 详细信息
+            const commitDetails = await new Promise((resolve, reject) => {
+                exec(`git show --patch --stat ${lineBlame.commit}`, { cwd: workspaceRoot }, (error, stdout, stderr) => {
+                    if (error) {
+                        reject(error);
+                        return;
+                    }
+                    resolve(stdout);
+                });
+            });
+
+            // 创建一个临时的 URI 来显示 commit 信息
+            const uri = vscode.Uri.parse(`git-commit:${lineBlame.commit}.diff`);
+
+            // 注册一个文本文档内容提供器
+            const provider = {
+                provideTextDocumentContent(uri) {
+                    return commitDetails;
+                }
+            };
+
+            // 注册提供器
+            context.subscriptions.push(
+                vscode.workspace.registerTextDocumentContentProvider('git-commit', provider)
+            );
+
+            // 打开文档
+            const doc = await vscode.workspace.openTextDocument(uri);
+            await vscode.window.showTextDocument(doc, {
+                preview: true,  // 使用预览模式
+                viewColumn: vscode.ViewColumn.Beside,
+                preserveFocus: true,  // 保持焦点在原文件
+                preview: true  // 确保是预览模式
+            });
+
+            // 设置为只读模式
+            await vscode.languages.setTextDocumentLanguage(doc, 'diff');
+
+        } catch (error) {
+            vscode.window.showErrorMessage(`无法显示 commit 信息: ${error.message}`);
         }
     });
 
     context.subscriptions.push(disposable);
     context.subscriptions.push(blameDisposable);
+    context.subscriptions.push(showCommitDisposable);
 }
 
 function deactivate() {}
