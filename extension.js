@@ -19,15 +19,16 @@ function getGitConfig(workspaceRoot) {
 
 function parseGitUrl(gitUrl) {
     // 支持 SSH 和 HTTPS 格式的 URL
-    const sshPattern = /git@(?:github\.com|github\.[\w.-]+):([^/]+)\/(.+)\.git/;
-    const httpsPattern = /https:\/\/(?:github\.com|github\.[\w.-]+)\/([^/]+)\/(.+)\.git/;
+    const sshPattern = /git@([^:]+):([^/]+)\/(.+)\.git/;
+    const httpsPattern = /https:\/\/([^/]+)\/([^/]+)\/(.+)\.git/;
 
     let match = gitUrl.match(sshPattern) || gitUrl.match(httpsPattern);
     if (!match) return null;
 
     return {
-        owner: match[1],
-        repo: match[2]
+        domain: match[1],
+        owner: match[2],
+        repo: match[3]
     };
 }
 
@@ -140,11 +141,11 @@ function generateColorFromHash(hash) {
     const r = parseInt(baseColor.substring(0, 2), 16) % 100 + 30;  // 30-130
     const g = parseInt(baseColor.substring(2, 4), 16) % 100 + 30;  // 30-130
     const b = parseInt(baseColor.substring(4, 6), 16) % 100 + 30;  // 30-130
-    // 增加不透明度
-    return `rgba(${r}, ${g}, ${b}, 0.4)`;
+    // 使用更低的透明度使颜色更鲜明
+    return `rgba(${r}, ${g}, ${b}, 0.7)`;
 }
 
-// 添加一个函数来获取 commit 的详细信息
+// 加一个函数来获取 commit 的详细信息
 function getCommitDetails(commitHash, workspaceRoot) {
     return new Promise((resolve, reject) => {
         exec(`git show ${commitHash}`, { cwd: workspaceRoot }, (error, stdout, stderr) => {
@@ -162,12 +163,9 @@ async function activate(context) {
 
     let disposable = vscode.commands.registerCommand('github-file-url.copyGitHubUrl', async () => {
         try {
-            console.log('复制 GitHub URL 命令被触发');
-
             // 获取当前文件
             const editor = vscode.window.activeTextEditor;
             if (!editor) {
-                console.log('错误：没有打开的文件');
                 vscode.window.showErrorMessage('没有打开的文件');
                 return;
             }
@@ -194,23 +192,62 @@ async function activate(context) {
                 }
 
                 // 构建 commit URL
-                const githubUrl = `https://github.com/${gitInfo.owner}/${gitInfo.repo}/commit/${commitHash}`;
+                const githubUrl = `https://${gitInfo.domain}/${gitInfo.owner}/${gitInfo.repo}/commit/${commitHash}`;
                 await vscode.env.clipboard.writeText(githubUrl);
                 vscode.window.showInformationMessage('Commit 链接已复制到剪贴板！');
-                return; // 直接返回，不执行后续逻辑
+                return;
             }
 
             // 原有的文件 URL 复制逻辑
             const workspaceRoot = vscode.workspace.getWorkspaceFolder(editor.document.uri)?.uri.fsPath;
             if (!workspaceRoot) {
-                console.log('错误：无法确定工作区根目录');
                 vscode.window.showErrorMessage('无法确定工作区根目录');
                 return;
             }
 
-            // ... 继续原有的逻辑 ...
+            // 获取 Git 配置
+            const gitUrl = await getGitConfig(workspaceRoot);
+            const gitInfo = parseGitUrl(gitUrl);
+
+            if (!gitInfo) {
+                vscode.window.showErrorMessage('无法解析 Git 仓库 URL');
+                return;
+            }
+
+            // 获取当前分支或 commit
+            const isDetached = await isDetachedHead(workspaceRoot);
+            let ref;
+            if (isDetached) {
+                ref = await getCurrentCommit(workspaceRoot);
+            } else {
+                ref = await getCurrentBranch(workspaceRoot);
+            }
+
+            // 获取相对路径
+            const relativePath = path.relative(
+                workspaceRoot,
+                editor.document.uri.fsPath
+            );
+
+            // 获取选中的行号
+            const selection = editor.selection;
+            let lineInfo = '';
+            if (!selection.isEmpty) {
+                if (selection.start.line === selection.end.line) {
+                    lineInfo = `#L${selection.start.line + 1}`;
+                } else {
+                    lineInfo = `#L${selection.start.line + 1}-L${selection.end.line + 1}`;
+                }
+            }
+
+            // 构建 GitHub URL
+            const githubUrl = `https://${gitInfo.domain}/${gitInfo.owner}/${gitInfo.repo}/blob/${ref}/${relativePath}${lineInfo}`;
+
+            // 复制到剪贴板
+            await vscode.env.clipboard.writeText(githubUrl);
+            vscode.window.showInformationMessage('GitHub 链接已复制到剪贴板！');
+
         } catch (error) {
-            console.error('发生错误:', error);
             vscode.window.showErrorMessage(`发生错误: ${error.message}`);
         }
     });
@@ -261,7 +298,7 @@ async function activate(context) {
                 const authorName = info.author || 'Unknown';
                 const author = authorName.length > maxAuthorWidth
                     ? authorName.substring(0, maxAuthorWidth)
-                    : authorName.padEnd(maxAuthorWidth, '.');
+                    : authorName.padEnd(maxAuthorWidth, '\u202F');  // 使用窄空格
                 const time = (info.time || 'Unknown').padEnd(maxTimeWidth);
 
                 // 为每个 commit 生成一个颜色
@@ -273,9 +310,7 @@ async function activate(context) {
                         before: {
                             margin: '0 1em 0 0',
                             backgroundColor,
-                            color: '#bbb',
-                            textDecoration: 'none',
-                            fontFamily: 'monospace',
+                            color: '#aaa',
                             contentText: `${shortHash} ${author} ${time}`
                         }
                     }
