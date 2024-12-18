@@ -8,23 +8,23 @@ There are a lot of similar extensions, but I love vim-fugitive so much and I wan
 
 ## Features
 
-- Copy GitHub URLs for files and line selections
+- Open GitHub URLs for files and line selections
 - Display Git Blame information with color-coded timestamps
 - View commit details with automatic line highlighting
 - Support for GitHub Enterprise
 
-### Open in GitHub (`, w`)
+### Open in GitHub (`Alt+, w`)
 - Open the current file in GitHub
 - Open with line numbers when text is selected
 - Open commit details in diff preview window
 
-### Git Blame Information (`, b l`)
+### Git Blame Information (`Alt+, b`)
 - Toggle Git blame information display
 - Shows commit hash, author, and timestamp
 - Color-coded: newer commits appear brighter
 - Fixed-width format for better readability
 
-### View Commit Details (`, s`)
+### View Commit Details (`Alt+, s`)
 - Show commit details for the current line
 - Opens in a side panel with diff view
 - Automatically highlights the relevant changes
@@ -55,9 +55,9 @@ There are two ways to install:
 ### Keyboard Shortcuts
 
 Default shortcuts:
-- `, w` - Open in GitHub
-- `, b l` - Toggle Git Blame information
-- `, s` - Show commit details for current line
+- `Alt+, w` - Open in GitHub
+- `Alt+, b` - Toggle Git Blame information
+- `Alt+, s` - Show commit details for current line
 
 To customize these shortcuts:
 1. Open Keyboard Shortcuts in VS Code:
@@ -75,30 +75,38 @@ Or directly edit `keybindings.json`:
 
 ### Examples
 
-1. Copy file URL:
+1. Open file URL:
    - Open any file in your repository
-   - Press `, w`
-   - URL is copied to clipboard
+   - Press `Alt+, w`
+   - The file is opened in GitHub
 
-2. Copy URL with line numbers:
+2. Open file URL with line numbers:
    - Select one or multiple lines
-   - Press `, w`
-   - URL with line numbers is copied
+   - Press `Alt+, w`
+   - The file is opened in GitHub with line numbers
 
 3. View blame information:
-   - Press `, b l` to toggle blame info
+   - Press `Alt+, b` to toggle blame info
    - Press again to hide
 
 4. Check commit details:
    - Show blame info first
    - Move cursor to any line
-   - Press `, s` to view commit details
+   - Press `Alt+, s` to view commit details
 
 ## Known Issues
 
-None at the moment.
+- When open the commit details, the cursor may not be in the correct position.
 
 ## Release Notes
+
+### 0.0.3
+
+- Changed keyboard shortcuts from `, w` to `Alt+, w`
+- Changed keyboard shortcuts from `, b l` to `Alt+, b`
+- Changed keyboard shortcuts from `, s` to `Alt+, s`
+- Fixed keyboard shortcuts in diff preview window
+- Removed legacy command support
 
 ### 0.0.2
 

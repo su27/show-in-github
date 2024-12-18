@@ -2,7 +2,7 @@
   "name": "show-me-in-github",
   "displayName": "Show Me in GitHub",
   "description": "View files, commits and blame info in GitHub with keyboard shortcuts",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "su27",
   "author": {
     "name": "su27"
@@ -27,9 +27,9 @@
     "commit"
   ],
   "activationEvents": [
-    "onCommand:github-file-url.openGitHubUrl",
-    "onCommand:github-file-url.showGitBlame",
-    "onCommand:github-file-url.showCommit"
+    "onCommand:openGitHubUrl",
+    "onCommand:showGitBlame",
+    "onCommand:showCommit"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -40,36 +40,36 @@
     },
     "commands": [
       {
-        "command": "show-me-in-github.openGitHubUrl",
+        "command": "openGitHubUrl",
         "title": "Show Me in GitHub: Open in GitHub"
       },
       {
-        "command": "show-me-in-github.showGitBlame",
+        "command": "showGitBlame",
         "title": "Show Me in GitHub: Show Git Blame Information"
       },
       {
-        "command": "show-me-in-github.showCommit",
+        "command": "showCommit",
         "title": "Show Me in GitHub: Show Commit Details"
       }
     ],
     "keybindings": [
       {
-        "command": "show-me-in-github.openGitHubUrl",
-        "key": ", w",
-        "mac": ", w",
-        "when": "editorTextFocus"
+        "command": "openGitHubUrl",
+        "key": "alt+, w",
+        "mac": "alt+, w",
+        "when": "(editorTextFocus || resourceScheme == 'git-commit') && (vim.mode == 'Normal' || !vim.active)"
       },
       {
-        "command": "show-me-in-github.showGitBlame",
-        "key": ", b l",
-        "mac": ", b l",
-        "when": "editorTextFocus"
+        "command": "showGitBlame",
+        "key": "alt+, b",
+        "mac": "alt+, b",
+        "when": "(editorTextFocus || resourceScheme == 'git-commit') && (vim.mode == 'Normal' || !vim.active)"
       },
       {
-        "command": "show-me-in-github.showCommit",
-        "key": ", s",
-        "mac": ", s",
-        "when": "editorTextFocus"
+        "command": "showCommit",
+        "key": "alt+, s",
+        "mac": "alt+, s",
+        "when": "(editorTextFocus || resourceScheme == 'git-commit') && (vim.mode == 'Normal' || !vim.active)"
       }
     ]
   },

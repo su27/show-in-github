@@ -213,7 +213,7 @@ function findLineInDiff(diffContent, targetLine, filePath) {
 }
 
 async function activate(context) {
-    let disposable = vscode.commands.registerCommand('show-me-in-github.openGitHubUrl', async () => {
+    let disposable = vscode.commands.registerCommand('openGitHubUrl', async () => {
         try {
             const editor = vscode.window.activeTextEditor;
             if (!editor) {
@@ -278,7 +278,7 @@ async function activate(context) {
         }
     });
 
-    let blameDisposable = vscode.commands.registerCommand('show-me-in-github.showGitBlame', async () => {
+    let blameDisposable = vscode.commands.registerCommand('showGitBlame', async () => {
         try {
             const check = checkEditorAndWorkspace();
             if (!check) return;
@@ -342,7 +342,7 @@ async function activate(context) {
         }
     });
 
-    let showCommitDisposable = vscode.commands.registerCommand('show-me-in-github.showCommit', async () => {
+    let showCommitDisposable = vscode.commands.registerCommand('showCommit', async () => {
         try {
             const check = checkEditorAndWorkspace();
             if (!check) return;
@@ -392,6 +392,16 @@ async function activate(context) {
             vscode.window.showErrorMessage(`无法显示 commit 信息: ${error.message}`);
         }
     });
+
+    // 添加命令别名
+    context.subscriptions.push(
+        vscode.commands.registerCommand('github-file-url.openGitHubUrl', () =>
+            vscode.commands.executeCommand('openGitHubUrl')),
+        vscode.commands.registerCommand('github-file-url.showGitBlame', () =>
+            vscode.commands.executeCommand('showGitBlame')),
+        vscode.commands.registerCommand('github-file-url.showCommit', () =>
+            vscode.commands.executeCommand('showCommit'))
+    );
 
     context.subscriptions.push(disposable, blameDisposable, showCommitDisposable);
 }
