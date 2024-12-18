@@ -1,13 +1,30 @@
 {
-  "name": "github-file-url",
-  "displayName": "GitHub File URL",
-  "description": "复制当前文件的 GitHub URL",
+  "name": "show-in-github",
+  "displayName": "Show in GitHub",
+  "description": "View files, commits and blame info in GitHub with keyboard shortcuts",
   "version": "0.0.1",
+  "publisher": "su27",
+  "author": {
+    "name": "su27"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/su27/show-in-github"
+  },
+  "license": "MIT",
+  "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.60.0"
   },
   "categories": [
     "Other"
+  ],
+  "keywords": [
+    "git",
+    "github",
+    "blame",
+    "url",
+    "commit"
   ],
   "activationEvents": [
     "onCommand:github-file-url.copyGitHubUrl",
@@ -16,35 +33,64 @@
   ],
   "main": "./extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Show in GitHub",
+      "properties": {
+        "showInGithub.shortcuts": {
+          "type": "object",
+          "description": "Keyboard shortcuts configuration",
+          "properties": {
+            "copyUrl": {
+              "type": "string",
+              "default": ", w",
+              "description": "Shortcut for opening GitHub URL"
+            },
+            "toggleBlame": {
+              "type": "string",
+              "default": ", b l",
+              "description": "Shortcut for toggling Git blame information"
+            },
+            "showCommit": {
+              "type": "string",
+              "default": ", s",
+              "description": "Shortcut for showing commit details"
+            }
+          }
+        }
+      }
+    },
     "commands": [
       {
         "command": "github-file-url.copyGitHubUrl",
-        "title": "复制 GitHub 文件链接"
+        "title": "Open in GitHub"
       },
       {
         "command": "github-file-url.showGitBlame",
-        "title": "显示 Git Blame 信息"
+        "title": "Show Git Blame Information"
       },
       {
         "command": "github-file-url.showCommit",
-        "title": "显示当前行的 Commit 信息"
+        "title": "Show Commit Details"
       }
     ],
     "keybindings": [
       {
         "command": "github-file-url.copyGitHubUrl",
         "key": ", w",
-        "mac": ", w"
+        "mac": ", w",
+        "when": "editorTextFocus"
       },
       {
         "command": "github-file-url.showGitBlame",
         "key": ", b l",
-        "mac": ", b l"
+        "mac": ", b l",
+        "when": "editorTextFocus"
       },
       {
         "command": "github-file-url.showCommit",
         "key": ", s",
-        "mac": ", s"
+        "mac": ", s",
+        "when": "editorTextFocus"
       }
     ]
   },
