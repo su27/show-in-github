@@ -213,7 +213,7 @@ function findLineInDiff(diffContent, targetLine, filePath) {
 }
 
 async function activate(context) {
-    let disposable = vscode.commands.registerCommand('github-file-url.copyGitHubUrl', async () => {
+    let disposable = vscode.commands.registerCommand('show-me-in-github.openGitHubUrl', async () => {
         try {
             const editor = vscode.window.activeTextEditor;
             if (!editor) {
@@ -278,7 +278,7 @@ async function activate(context) {
         }
     });
 
-    let blameDisposable = vscode.commands.registerCommand('github-file-url.showGitBlame', async () => {
+    let blameDisposable = vscode.commands.registerCommand('show-me-in-github.showGitBlame', async () => {
         try {
             const check = checkEditorAndWorkspace();
             if (!check) return;
@@ -342,7 +342,7 @@ async function activate(context) {
         }
     });
 
-    let showCommitDisposable = vscode.commands.registerCommand('github-file-url.showCommit', async () => {
+    let showCommitDisposable = vscode.commands.registerCommand('show-me-in-github.showCommit', async () => {
         try {
             const check = checkEditorAndWorkspace();
             if (!check) return;

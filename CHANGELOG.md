@@ -1,6 +1,14 @@
 # Change Log
 
-All notable changes to the "Show in GitHub" extension will be documented in this file.
+All notable changes to the "Show Me in GitHub" extension will be documented in this file.
+
+## [0.0.2] - 2024-03-14
+
+### Changed
+- Changed command prefix to "show-me-in-github"
+- Changed "Copy GitHub URL" to "Open in GitHub"
+- Improved keyboard shortcuts customization instructions
+- Fixed activation events
 
 ## [0.0.1] - 2024-03-14
 

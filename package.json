@@ -1,8 +1,8 @@
 {
-  "name": "show-in-github",
-  "displayName": "Show in GitHub",
+  "name": "show-me-in-github",
+  "displayName": "Show Me in GitHub",
   "description": "View files, commits and blame info in GitHub with keyboard shortcuts",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "su27",
   "author": {
     "name": "su27"
@@ -27,7 +27,7 @@
     "commit"
   ],
   "activationEvents": [
-    "onCommand:github-file-url.copyGitHubUrl",
+    "onCommand:github-file-url.openGitHubUrl",
     "onCommand:github-file-url.showGitBlame",
     "onCommand:github-file-url.showCommit"
   ],
@@ -36,58 +36,37 @@
     "configuration": {
       "title": "Show in GitHub",
       "properties": {
-        "showInGithub.shortcuts": {
-          "type": "object",
-          "description": "Keyboard shortcuts configuration",
-          "properties": {
-            "copyUrl": {
-              "type": "string",
-              "default": ", w",
-              "description": "Shortcut for opening GitHub URL"
-            },
-            "toggleBlame": {
-              "type": "string",
-              "default": ", b l",
-              "description": "Shortcut for toggling Git blame information"
-            },
-            "showCommit": {
-              "type": "string",
-              "default": ", s",
-              "description": "Shortcut for showing commit details"
-            }
-          }
-        }
       }
     },
     "commands": [
       {
-        "command": "github-file-url.copyGitHubUrl",
-        "title": "Open in GitHub"
+        "command": "show-me-in-github.openGitHubUrl",
+        "title": "Show Me in GitHub: Open in GitHub"
       },
       {
-        "command": "github-file-url.showGitBlame",
-        "title": "Show Git Blame Information"
+        "command": "show-me-in-github.showGitBlame",
+        "title": "Show Me in GitHub: Show Git Blame Information"
       },
       {
-        "command": "github-file-url.showCommit",
-        "title": "Show Commit Details"
+        "command": "show-me-in-github.showCommit",
+        "title": "Show Me in GitHub: Show Commit Details"
       }
     ],
     "keybindings": [
       {
-        "command": "github-file-url.copyGitHubUrl",
+        "command": "show-me-in-github.openGitHubUrl",
         "key": ", w",
         "mac": ", w",
         "when": "editorTextFocus"
       },
       {
-        "command": "github-file-url.showGitBlame",
+        "command": "show-me-in-github.showGitBlame",
         "key": ", b l",
         "mac": ", b l",
         "when": "editorTextFocus"
       },
       {
-        "command": "github-file-url.showCommit",
+        "command": "show-me-in-github.showCommit",
         "key": ", s",
         "mac": ", s",
         "when": "editorTextFocus"

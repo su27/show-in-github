@@ -1,4 +1,4 @@
-# Show in GitHub
+# Show Me in GitHub
 
 An extension for viewing blame information and commit details in VS Code, and copy file/commit URL in GitHub/GitHub Enterprise. Quickly navigate with keyboard shortcuts.
 
@@ -34,18 +34,40 @@ An extension for viewing blame information and commit details in VS Code, and co
 
 ## Installation
 
-1. Open VS Code
-2. Press `Ctrl+P` / `Cmd+P`
-3. Type `ext install github-file-url`
-4. Press Enter
+There are two ways to install:
+
+1. From VS Code Marketplace:
+   - Open Extensions in VS Code (`Ctrl+Shift+X` / `Cmd+Shift+X`)
+   - Search for "Show Me in GitHub"
+   - Click Install
+
+2. From VSIX file:
+   - Download the .vsix file from [releases](https://github.com/su27/show-me-in-github/releases)
+   - Drag and drop the file into VS Code
+   - Or install from VSIX via VS Code command palette
 
 ## Usage
 
 ### Keyboard Shortcuts
 
-- `, w` - Copy GitHub URL
+Default shortcuts:
+- `, w` - Open in GitHub
 - `, b l` - Toggle Git Blame information
 - `, s` - Show commit details for current line
+
+To customize these shortcuts:
+1. Open Keyboard Shortcuts in VS Code:
+   - Windows/Linux: Press `Ctrl+K Ctrl+S`
+   - Mac: Press `Cmd+K Cmd+S`
+2. Search for "Show Me in GitHub" to see all commands
+3. Click the pencil icon next to any command to edit its shortcut
+4. Press your desired key combination
+5. Press Enter to save
+
+Or directly edit `keybindings.json`:
+1. Open Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
+2. Type "Preferences: Open Keyboard Shortcuts (JSON)"
+3. Add your custom keybindings:
 
 ### Examples
 
@@ -68,21 +90,18 @@ An extension for viewing blame information and commit details in VS Code, and co
    - Move cursor to any line
    - Press `, s` to view commit details
 
-## Extension Settings
-
-This extension contributes the following settings:
-
-* `showInGithub.shortcuts.copyUrl`: Shortcut for copying GitHub URL (default: `, w`)
-* `showInGithub.shortcuts.toggleBlame`: Shortcut for toggling Git blame information (default: `, b l`)
-* `showInGithub.shortcuts.showCommit`: Shortcut for showing commit details (default: `, s`)
-
-You can customize these shortcuts in your VS Code settings:
-
 ## Known Issues
 
 None at the moment.
 
 ## Release Notes
+
+### 0.0.2
+
+- Changed command prefix to "show-me-in-github"
+- Changed "Copy GitHub URL" to "Open in GitHub"
+- Improved keyboard shortcuts customization instructions
+- Fixed activation events
 
 ### 0.0.1
 
