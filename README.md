@@ -2,6 +2,10 @@
 
 An extension for viewing blame information and commit details in VS Code, and copy file/commit URL in GitHub/GitHub Enterprise. Quickly navigate with keyboard shortcuts.
 
+There are a lot of similar extensions, but I love vim-fugitive so much and I want to mimic part of its functionality.
+
+![screenshot](./images/screenshot.jpg)
+
 ## Features
 
 - Copy GitHub URLs for files and line selections
