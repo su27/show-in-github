@@ -8,47 +8,28 @@ There are a lot of similar extensions, but I love vim-fugitive so much and I wan
 
 ## Features
 
-- Open GitHub URLs for files and line selections
-- Display Git Blame information with color-coded timestamps
-- View commit details with automatic line highlighting
-- Support for GitHub Enterprise
+- Open current file/lines in GitHub or GitHub Enterprise
+- Show Git blame information with color-coded timestamps
+- View commit changes in side-by-side diff
 
 ### Open in GitHub (`Alt+, w`)
-- Open the current file in GitHub
-- Open with line numbers when text is selected
-- Open commit details in diff preview window
+- Open file in GitHub
+- Support line number selection
+- Support commit URL in diff view
 
 ### Git Blame Information (`Alt+, b`)
 - Toggle Git blame information display
 - Shows commit hash, author, and timestamp
 - Color-coded: newer commits appear brighter
-- Fixed-width format for better readability
 
 ### View Commit Details (`Alt+, s`)
 - Show commit details for the current line
-- Opens in a side panel with diff view
-- Automatically highlights the relevant changes
-- Press `Esc` to close the diff view
-
-## Requirements
-
-- VS Code 1.60.0 or higher
-- Git repository
-- GitHub or GitHub Enterprise remote repository
+- Opens in a side-by-side diff view showing changes before and after the commit
+- Shows the full context of the commit changes
 
 ## Installation
 
-There are two ways to install:
-
-1. From VS Code Marketplace:
-   - Open Extensions in VS Code (`Ctrl+Shift+X` / `Cmd+Shift+X`)
-   - Search for "Show Me in GitHub"
-   - Click Install
-
-2. From VSIX file:
-   - Download the .vsix file from [releases](https://github.com/su27/show-in-github/releases)
-   - Drag and drop the file into VS Code
-   - Or install from VSIX via VS Code command palette
+Install from VS Code Marketplace or download VSIX file from [releases](https://github.com/su27/show-in-github/releases).
 
 ## Usage
 
@@ -73,26 +54,33 @@ Or directly edit `keybindings.json`:
 2. Type "Preferences: Open Keyboard Shortcuts (JSON)"
 3. Add your custom keybindings:
 
+### For Vim Users
+
+If you prefer Vim `<leader>` style shortcuts in normal mode like me, you can add these configurations to your `settings.json`:
+
+```json
+"vim.normalModeKeyBindingsNonRecursive": [
+   {
+      "before": [",", "w"],
+      "commands": ["openGitHubUrl"]
+   },
+   {
+      "before": [",", "b", "l"],
+      "commands": ["showGitBlame"]
+   },
+   {
+      "before": [",", "<CR>"],
+      "commands": ["showCommit"]
+   }
+]
+```
+
 ### Examples
 
-1. Open file URL:
-   - Open any file in your repository
-   - Press `Alt+, w`
-   - The file is opened in GitHub
-
-2. Open file URL with line numbers:
-   - Select one or multiple lines
-   - Press `Alt+, w`
-   - The file is opened in GitHub with line numbers
-
-3. View blame information:
-   - Press `Alt+, b` to toggle blame info
-   - Press again to hide
-
-4. Check commit details:
-   - Show blame info first
-   - Move cursor to any line
-   - Press `Alt+, s` to view commit details
+- Press `Alt+, w` to open current file in GitHub
+- Select lines before `Alt+, w` to include line numbers
+- Press `Alt+, b` to toggle blame info
+- With blame info shown, press `Alt+, s` to view commit changes
 
 ## Known Issues
 

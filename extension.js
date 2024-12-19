@@ -6,6 +6,42 @@ const path = require('path');
 let currentBlameDecorationType = null;
 let currentBlameInfo = null;
 
+// 添加缓存对象
+const cache = {
+    gitConfig: null,
+    gitInfo: null,
+    commitDetails: new Map(),
+    blameInfo: new Map()
+};
+
+// 将装饰器类型定义移到全局
+const decorationTypes = {
+    added: null,
+    removed: null,
+    header: null
+};
+
+// 为每个编辑器维护显示状态
+const editorBlameStates = new Map();  // key: editor.document.uri.toString(), value: { shouldShow: boolean }
+
+function getDecorationTypes() {
+    if (!decorationTypes.added) {
+        decorationTypes.added = vscode.window.createTextEditorDecorationType({
+            backgroundColor: 'rgba(155, 185, 85, 0.1)',
+            isWholeLine: true
+        });
+        decorationTypes.removed = vscode.window.createTextEditorDecorationType({
+            backgroundColor: 'rgba(255, 117, 117, 0.1)',
+            isWholeLine: true
+        });
+        decorationTypes.header = vscode.window.createTextEditorDecorationType({
+            backgroundColor: 'rgba(86, 156, 214, 0.1)',
+            isWholeLine: true
+        });
+    }
+    return decorationTypes;
+}
+
 // 工具函数：检查编辑器和工作区
 function checkEditorAndWorkspace() {
     const editor = vscode.window.activeTextEditor;
@@ -24,13 +60,17 @@ function checkEditorAndWorkspace() {
 }
 
 function getGitConfig(workspaceRoot) {
+    if (cache.gitConfig) {
+        return Promise.resolve(cache.gitConfig);
+    }
     return new Promise((resolve, reject) => {
         exec('git config --get remote.origin.url', { cwd: workspaceRoot }, (error, stdout, stderr) => {
             if (error) {
                 reject(error);
                 return;
             }
-            resolve(stdout.trim());
+            cache.gitConfig = stdout.trim();
+            resolve(cache.gitConfig);
         });
     });
 }
@@ -76,6 +116,10 @@ function isDetachedHead(workspaceRoot) {
 }
 
 function getGitBlame(filePath, workspaceRoot) {
+    const cacheKey = `${workspaceRoot}:${filePath}`;
+    if (cache.blameInfo.has(cacheKey)) {
+        return Promise.resolve(cache.blameInfo.get(cacheKey));
+    }
     return new Promise((resolve, reject) => {
         exec(`git blame --line-porcelain "${filePath}"`, { cwd: workspaceRoot }, (error, stdout) => {
             if (error) {
@@ -135,6 +179,7 @@ function getGitBlame(filePath, workspaceRoot) {
                 blameInfo.push(currentLine);
             }
 
+            cache.blameInfo.set(cacheKey, blameInfo);
             resolve(blameInfo);
         });
     });
@@ -145,25 +190,28 @@ function generateColorFromHash(hash, timestamp) {
     const now = Date.now() / 1000;  // 当前时间戳（秒）
     const ageInDays = (now - timestamp) / (24 * 60 * 60);  // commit 的年龄（天）
 
-    // 调整亮度范围：0.25-1.0，提高最暗的亮度
-    const brightness = 0.25 + (0.75 / (1 + Math.exp(ageInDays / 180 - 2)));
+    // 调整亮度范围：0.4-0.8，减少亮度差异
+    const brightness = 0.4 + (0.4 / (1 + Math.exp(ageInDays / 180 - 2)));
 
-    // 基础颜色，稍微提高基础亮度
-    const r = parseInt(baseColor.substring(0, 2), 16) % 85 + 25;  // 25-110
-    const g = parseInt(baseColor.substring(2, 4), 16) % 85 + 25;  // 25-110
-    const b = parseInt(baseColor.substring(4, 6), 16) % 85 + 25;  // 25-110
+    // 基础颜色，提高基础亮度
+    const r = parseInt(baseColor.substring(0, 2), 16) % 85 + 85;  // 85-170
+    const g = parseInt(baseColor.substring(2, 4), 16) % 85 + 85;  // 85-170
+    const b = parseInt(baseColor.substring(4, 6), 16) % 85 + 85;  // 85-170
 
-    // 应用亮度系数，新的 commit 额外增加亮度
-    const adjustedR = Math.min(255, r * brightness + (brightness > 0.7 ? 70 : 0));
-    const adjustedG = Math.min(255, g * brightness + (brightness > 0.7 ? 70 : 0));
-    const adjustedB = Math.min(255, b * brightness + (brightness > 0.7 ? 70 : 0));
+    // 计算饱和度增加量，新的 commit 有更高的饱和度
+    const saturationBoost = 1 + (0.5 / (1 + Math.exp(ageInDays / 90 - 2)));  // 1.0-1.5
+
+    // 应用亮度和饱和度
+    const adjustedR = Math.min(255, r * brightness * (r > (g + b) / 2 ? saturationBoost : 1));
+    const adjustedG = Math.min(255, g * brightness * (g > (r + b) / 2 ? saturationBoost : 1));
+    const adjustedB = Math.min(255, b * brightness * (b > (r + g) / 2 ? saturationBoost : 1));
 
     return `rgba(${adjustedR}, ${adjustedG}, ${adjustedB}, 0.7)`;
 }
 
-function getCommitDetails(commitHash, workspaceRoot) {
+function getCommitDetails(commitHash, filePath, workspaceRoot) {
     return new Promise((resolve, reject) => {
-        exec(`git show --patch --stat ${commitHash}`, { cwd: workspaceRoot }, (error, stdout) => {
+        exec(`git show ${commitHash}:${filePath}`, { cwd: workspaceRoot }, (error, stdout) => {
             if (error) reject(error);
             else resolve(stdout);
         });
@@ -171,48 +219,230 @@ function getCommitDetails(commitHash, workspaceRoot) {
 }
 
 function findLineInDiff(diffContent, targetLine, filePath) {
+    const targetLineContent = require('fs').readFileSync(filePath, 'utf8')
+        .split('\n')[targetLine]?.trim();
+
+    if (!targetLineContent) return 0;
+
     const lines = diffContent.split('\n');
-    let currentFile = null;
-    let lineNumber = 0;
-    let targetLineContent = null;
+    let inCurrentFile = false;
 
-    // 首先获取目标行的内容
-    try {
-        targetLineContent = require('fs').readFileSync(filePath, 'utf8').split('\n')[targetLine].trim();
-    } catch (error) {
-        return 0;
-    }
-
-    // 遍历 diff 内容
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-
-        // 查找文件头
         if (line.startsWith('diff --git')) {
-            currentFile = null;
-            lineNumber = 0;
+            inCurrentFile = false;
             continue;
         }
-
-        // 查找 +++ 行（新文件）
         if (line.startsWith('+++')) {
-            currentFile = line;
+            inCurrentFile = true;
             continue;
         }
-
-        // 在找到文件头之后，开始计数
-        if (currentFile) {
-            if (line.startsWith('+') && line.substring(1).trim() === targetLineContent) {
-                // 找到匹配的行
-                return i;
-            }
+        if (inCurrentFile && line.startsWith('+') && line.substring(1).trim() === targetLineContent) {
+            return i;
         }
     }
-
     return 0;
 }
 
+// 添加调试打印函数
+function printBlameStates(action) {
+    console.log(`\n[${action}] Blame States:`);
+    for (const [uri, state] of editorBlameStates.entries()) {
+        console.log(`${uri}: ${state.shouldShow}`);
+    }
+    console.log('Current Editor:', vscode.window.activeTextEditor?.document.uri.toString());
+    console.log('Current Decoration:', currentBlameDecorationType ? 'exists' : 'null');
+    console.log('Current Blame Info:', currentBlameInfo ? 'exists' : 'null');
+}
+
 async function activate(context) {
+    // 添加编辑器切换事件监听
+    context.subscriptions.push(
+        vscode.window.onDidChangeActiveTextEditor(editor => {
+            if (!editor) return;
+
+            // 如果���换到 diff 预览窗口，不做任何处理
+            if (editor.document.uri.scheme === 'git-commit') return;
+
+            const editorKey = editor.document.uri.toString();
+            const currentState = editorBlameStates.get(editorKey);
+
+            console.log(`\n[Switch] Editor: ${editorKey}, State: ${currentState?.shouldShow}`);
+            printBlameStates('After Switch');
+
+            if (currentState?.shouldShow) {
+                // 如果该编辑器应该显示 blame 信息
+                const workspaceRoot = vscode.workspace.getWorkspaceFolder(editor.document.uri)?.uri.fsPath;
+                if (!workspaceRoot) return;
+
+                // 重新获取并显示 blame 信息
+                getGitBlame(editor.document.uri.fsPath, workspaceRoot).then(blameInfo => {
+                    // 创建新的装饰器
+                    if (currentBlameDecorationType) {
+                        currentBlameDecorationType.dispose();
+                    }
+                    currentBlameDecorationType = vscode.window.createTextEditorDecorationType({
+                        isWholeLine: true,
+                    });
+
+                    // 创建装饰
+                    const decorations = blameInfo.map((info, index) => {
+                        const shortHash = info.commit.substring(0, 6);
+                        const authorName = info.author || 'Unknown';
+                        const author = authorName.length > 9
+                            ? authorName.substring(0, 9)
+                            : authorName.padEnd(9, '\u202F');
+                        const time = (info.time || 'Unknown');
+                        const timestamp = new Date(info.time).getTime() / 1000;
+
+                        return {
+                            range: new vscode.Range(index, 0, index, 0),
+                            renderOptions: {
+                                before: {
+                                    margin: '0 1em 0 0',
+                                    backgroundColor: generateColorFromHash(info.commit, timestamp),
+                                    color: '#aaa',
+                                    contentText: `${shortHash} ${author} ${time}`,
+                                    fontFamily: 'Iosevka Nerd Font'
+                                }
+                            }
+                        };
+                    });
+
+                    // 应用装饰器
+                    editor.setDecorations(currentBlameDecorationType, decorations);
+                    currentBlameInfo = blameInfo;
+                });
+            } else {
+                // 如果该编辑器不应该显示 blame 信息
+                if (currentBlameDecorationType) {
+                    currentBlameDecorationType.dispose();
+                    currentBlameDecorationType = null;
+                    currentBlameInfo = null;
+                }
+            }
+        })
+    );
+
+    let showCommitDisposable = vscode.commands.registerCommand('showCommit', async () => {
+        try {
+            const check = checkEditorAndWorkspace();
+            if (!check) return;
+            const { editor, workspaceRoot } = check;
+
+            if (!currentBlameInfo || !currentBlameDecorationType) return;
+
+            const line = editor.selection.active.line;
+            const lineBlame = currentBlameInfo[line];
+            if (!lineBlame) return;
+
+            // 使用 git show 命令获取 commit 的 diff 信息
+            const commitDetails = await new Promise((resolve, reject) => {
+                exec(`git show ${lineBlame.commit}`, { cwd: workspaceRoot }, (error, stdout) => {
+                    if (error) reject(error);
+                    else resolve(stdout);
+                });
+            });
+
+            const uri = vscode.Uri.parse(`git-commit:${lineBlame.commit}.diff`);
+
+            const provider = {
+                provideTextDocumentContent(uri) {
+                    return commitDetails;
+                }
+            };
+
+            context.subscriptions.push(
+                vscode.workspace.registerTextDocumentContentProvider('git-commit', provider)
+            );
+
+            const doc = await vscode.workspace.openTextDocument(uri);
+            const diffEditor = await vscode.window.showTextDocument(doc, {
+                preview: true,
+                viewColumn: vscode.ViewColumn.Beside
+            });
+
+            await vscode.languages.setTextDocumentLanguage(doc, 'diff');
+
+            // 添加装饰器来改进 diff 的显示效果
+            const addedLinesDecoration = vscode.window.createTextEditorDecorationType({
+                backgroundColor: 'rgba(155, 185, 85, 0.1)',
+                isWholeLine: true
+            });
+
+            const removedLinesDecoration = vscode.window.createTextEditorDecorationType({
+                backgroundColor: 'rgba(255, 117, 117, 0.1)',
+                isWholeLine: true
+            });
+
+            const headerLinesDecoration = vscode.window.createTextEditorDecorationType({
+                backgroundColor: 'rgba(86, 156, 214, 0.1)',
+                isWholeLine: true
+            });
+
+            // 应用装饰器
+            const lines = doc.getText().split('\n');
+            const addedLines = [];
+            const removedLines = [];
+            const headerLines = [];
+
+            lines.forEach((line, index) => {
+                if (line.startsWith('+') && !line.startsWith('+++')) {
+                    addedLines.push(new vscode.Range(index, 0, index, line.length));
+                } else if (line.startsWith('-') && !line.startsWith('---')) {
+                    removedLines.push(new vscode.Range(index, 0, index, line.length));
+                } else if (line.startsWith('diff') || line.startsWith('index') ||
+                          line.startsWith('---') || line.startsWith('+++')) {
+                    headerLines.push(new vscode.Range(index, 0, index, line.length));
+                }
+            });
+
+            diffEditor.setDecorations(addedLinesDecoration, addedLines);
+            diffEditor.setDecorations(removedLinesDecoration, removedLines);
+            diffEditor.setDecorations(headerLinesDecoration, headerLines);
+
+            // 找到对应的改动行
+            const diffLine = findLineInDiff(commitDetails, line, editor.document.uri.fsPath);
+
+            // 创建一个选，定位到对应行
+            const position = new vscode.Position(diffLine, 0);
+            diffEditor.selection = new vscode.Selection(position, position);
+
+            // 确保该行在编辑器的可见区域内
+            diffEditor.revealRange(
+                new vscode.Range(position, position),
+                vscode.TextEditorRevealType.InCenter
+            );
+
+            // 恢复原编辑器的 blame 信息
+            editor.setDecorations(currentBlameDecorationType, currentBlameInfo.map((info, index) => {
+                const shortHash = info.commit.substring(0, 6);
+                const authorName = info.author || 'Unknown';
+                const author = authorName.length > 9
+                    ? authorName.substring(0, 9)
+                    : authorName.padEnd(9, '\u202F');
+                const time = (info.time || 'Unknown');
+                const timestamp = new Date(info.time).getTime() / 1000;
+
+                return {
+                    range: new vscode.Range(index, 0, index, 0),
+                    renderOptions: {
+                        before: {
+                            margin: '0 1em 0 0',
+                            backgroundColor: generateColorFromHash(info.commit, timestamp),
+                            color: '#aaa',
+                            contentText: `${shortHash} ${author} ${time}`,
+                            fontFamily: 'Iosevka Nerd Font'
+                        }
+                    }
+                };
+            }));
+
+        } catch (error) {
+            vscode.window.showErrorMessage(`无法显示 commit 信息: ${error.message}`);
+        }
+    });
+
     let disposable = vscode.commands.registerCommand('openGitHubUrl', async () => {
         try {
             const editor = vscode.window.activeTextEditor;
@@ -244,7 +474,7 @@ async function activate(context) {
                 return;
             }
 
-            // 对于普通文件，使用 checkEditorAndWorkspace
+            // 于普通文件，使用 checkEditorAndWorkspace
             const check = checkEditorAndWorkspace();
             if (!check) return;
             const { workspaceRoot } = check;
@@ -284,53 +514,66 @@ async function activate(context) {
             if (!check) return;
             const { editor, workspaceRoot } = check;
 
-            if (currentBlameDecorationType) {
-                currentBlameDecorationType.dispose();
-                currentBlameDecorationType = null;
-                currentBlameInfo = null;
-                return;
+            const editorKey = editor.document.uri.toString();
+            const currentState = editorBlameStates.get(editorKey) || { shouldShow: false };
+
+            console.log(`\n[Toggle] Before - Editor: ${editorKey}, State: ${currentState.shouldShow}`);
+
+            if (currentState.shouldShow) {
+                // 如果当前状态是显示，则隐藏
+                if (currentBlameDecorationType) {
+                    currentBlameDecorationType.dispose();
+                    currentBlameDecorationType = null;
+                    currentBlameInfo = null;
+                }
+                currentState.shouldShow = false;
+            } else {
+                // 如果当前状态是隐藏，则显示
+                const blameInfo = await getGitBlame(editor.document.uri.fsPath, workspaceRoot);
+                let maxAuthorWidth = 0;
+                let maxTimeWidth = 0;
+
+                blameInfo.forEach(info => {
+                    const authorLen = (info.author || 'Unknown').length;
+                    maxAuthorWidth = Math.max(maxAuthorWidth, authorLen);
+                    maxTimeWidth = Math.max(maxTimeWidth, (info.time || 'Unknown').length);
+                });
+
+                const decorations = blameInfo.map((info, index) => {
+                    const shortHash = info.commit.substring(0, 6);
+                    const authorName = info.author || 'Unknown';
+                    const author = authorName.length > 9
+                        ? authorName.substring(0, 9)
+                        : authorName.padEnd(9, '\u202F');
+                    const time = (info.time || 'Unknown').padEnd(maxTimeWidth);
+
+                    const timestamp = new Date(info.time).getTime() / 1000;
+
+                    return {
+                        range: new vscode.Range(index, 0, index, 0),
+                        renderOptions: {
+                            before: {
+                                margin: '0 1em 0 0',
+                                backgroundColor: generateColorFromHash(info.commit, timestamp),
+                                color: '#aaa',
+                                contentText: `${shortHash} ${author} ${time}`,
+                                fontFamily: 'Iosevka Nerd Font'
+                            }
+                        }
+                    };
+                });
+
+                currentBlameDecorationType = vscode.window.createTextEditorDecorationType({
+                    isWholeLine: true,
+                });
+
+                editor.setDecorations(currentBlameDecorationType, decorations);
+                currentBlameInfo = blameInfo;
+                currentState.shouldShow = true;
             }
 
-            const blameInfo = await getGitBlame(editor.document.uri.fsPath, workspaceRoot);
-            let maxAuthorWidth = 0;
-            let maxTimeWidth = 0;
-
-            blameInfo.forEach(info => {
-                const authorLen = (info.author || 'Unknown').length;
-                maxAuthorWidth = Math.max(maxAuthorWidth, authorLen);
-                maxTimeWidth = Math.max(maxTimeWidth, (info.time || 'Unknown').length);
-            });
-
-            const decorations = blameInfo.map((info, index) => {
-                const shortHash = info.commit.substring(0, 6);
-                const authorName = info.author || 'Unknown';
-                const author = authorName.length > 9
-                    ? authorName.substring(0, 9)
-                    : authorName.padEnd(9, '\u202F');
-                const time = (info.time || 'Unknown').padEnd(maxTimeWidth);
-
-                // 从时间字符串解析时间戳
-                const timestamp = new Date(info.time).getTime() / 1000;
-
-                return {
-                    range: new vscode.Range(index, 0, index, 0),
-                    renderOptions: {
-                        before: {
-                            margin: '0 1em 0 0',
-                            backgroundColor: generateColorFromHash(info.commit, timestamp),
-                            color: '#aaa',
-                            contentText: `${shortHash} ${author} ${time}`
-                        }
-                    }
-                };
-            });
-
-            currentBlameDecorationType = vscode.window.createTextEditorDecorationType({
-                isWholeLine: true,
-            });
-
-            editor.setDecorations(currentBlameDecorationType, decorations);
-            currentBlameInfo = blameInfo;
+            editorBlameStates.set(editorKey, currentState);
+            printBlameStates('After Toggle');
 
         } catch (error) {
             vscode.window.showErrorMessage(`Git blame 错误: ${error.message}`);
@@ -339,57 +582,6 @@ async function activate(context) {
                 currentBlameDecorationType = null;
                 currentBlameInfo = null;
             }
-        }
-    });
-
-    let showCommitDisposable = vscode.commands.registerCommand('showCommit', async () => {
-        try {
-            const check = checkEditorAndWorkspace();
-            if (!check) return;
-            const { editor, workspaceRoot } = check;
-
-            if (!currentBlameInfo || !currentBlameDecorationType) return;
-
-            const line = editor.selection.active.line;
-            const lineBlame = currentBlameInfo[line];
-            if (!lineBlame) return;
-
-            const commitDetails = await getCommitDetails(lineBlame.commit, workspaceRoot);
-            const uri = vscode.Uri.parse(`git-commit:${lineBlame.commit}.diff`);
-
-            const provider = {
-                provideTextDocumentContent(uri) {
-                    return commitDetails;
-                }
-            };
-
-            context.subscriptions.push(
-                vscode.workspace.registerTextDocumentContentProvider('git-commit', provider)
-            );
-
-            const doc = await vscode.workspace.openTextDocument(uri);
-            const diffEditor = await vscode.window.showTextDocument(doc, {
-                preview: true,
-                viewColumn: vscode.ViewColumn.Beside
-            });
-
-            await vscode.languages.setTextDocumentLanguage(doc, 'diff');
-
-            // 找到对应的改动行
-            const diffLine = findLineInDiff(commitDetails, line, editor.document.uri.fsPath);
-
-            // 创建一个选择，定位到对应行
-            const position = new vscode.Position(diffLine, 0);
-            diffEditor.selection = new vscode.Selection(position, position);
-
-            // 确保该行在编辑器的可见区域内
-            diffEditor.revealRange(
-                new vscode.Range(position, position),
-                vscode.TextEditorRevealType.InCenter
-            );
-
-        } catch (error) {
-            vscode.window.showErrorMessage(`无法显示 commit 信息: ${error.message}`);
         }
     });
 
@@ -406,7 +598,26 @@ async function activate(context) {
     context.subscriptions.push(disposable, blameDisposable, showCommitDisposable);
 }
 
-function deactivate() {}
+function deactivate() {
+    // 清理所有编辑器的装饰器
+    for (const state of editorBlameStates.values()) {
+        state.decorationType.dispose();
+    }
+    editorBlameStates.clear();
+
+    // 清理装饰器
+    if (currentBlameDecorationType) {
+        currentBlameDecorationType.dispose();
+    }
+    Object.values(decorationTypes).forEach(type => {
+        if (type) type.dispose();
+    });
+    // 清理缓存
+    cache.gitConfig = null;
+    cache.gitInfo = null;
+    cache.commitDetails.clear();
+    cache.blameInfo.clear();
+}
 
 module.exports = {
     activate,

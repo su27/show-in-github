@@ -2,6 +2,15 @@
 
 All notable changes to the "Show Me in GitHub" extension will be documented in this file.
 
+## [0.0.4] - 2024-03-14
+
+### Changed
+- Fixed blame info disappearing when switching editors
+- Fixed blame info disappearing when opening diff view
+- Improved color scheme for blame info
+- Added Iosevka Nerd Font support for blame info
+- Added syntax highlighting for diff view
+
 ## [0.0.3] - 2024-03-14
 
 ### Changed
