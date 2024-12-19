@@ -2,7 +2,7 @@
   "name": "show-me-in-github",
   "displayName": "Show Me in GitHub",
   "description": "View files, commits and blame info in GitHub with keyboard shortcuts",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "publisher": "su27",
   "author": {
     "name": "su27"
@@ -57,19 +57,19 @@
         "command": "openGitHubUrl",
         "key": "alt+, w",
         "mac": "alt+, w",
-        "when": "(editorTextFocus || resourceScheme == 'git-commit') && (vim.mode == 'Normal' || !vim.active)"
+        "when": "(editorTextFocus || resourceScheme == 'git-commit') && (vim.mode == 'Normal' || vim.mode == 'Visual' || !vim.active)"
       },
       {
         "command": "showGitBlame",
         "key": "alt+, b",
         "mac": "alt+, b",
-        "when": "(editorTextFocus || resourceScheme == 'git-commit') && (vim.mode == 'Normal' || !vim.active)"
+        "when": "(editorTextFocus || resourceScheme == 'git-commit') && (vim.mode == 'Normal' || vim.mode == 'Visual' || !vim.active)"
       },
       {
         "command": "showCommit",
         "key": "alt+, s",
         "mac": "alt+, s",
-        "when": "(editorTextFocus || resourceScheme == 'git-commit') && (vim.mode == 'Normal' || !vim.active)"
+        "when": "(editorTextFocus || resourceScheme == 'git-commit') && (vim.mode == 'Normal' || vim.mode == 'Visual' || !vim.active)"
       }
     ]
   },

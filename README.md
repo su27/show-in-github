@@ -10,7 +10,6 @@ There are a lot of similar extensions, but I love vim-fugitive so much and I wan
 
 - Open current file/lines in GitHub or GitHub Enterprise
 - Show Git blame information with color-coded timestamps
-- View commit changes in side-by-side diff
 
 ### Open in GitHub (`Alt+, w`)
 - Open file in GitHub
@@ -24,8 +23,7 @@ There are a lot of similar extensions, but I love vim-fugitive so much and I wan
 
 ### View Commit Details (`Alt+, s`)
 - Show commit details for the current line
-- Opens in a side-by-side diff view showing changes before and after the commit
-- Shows the full context of the commit changes
+- Shows the commit changes in vs code diff view
 
 ## Installation
 
@@ -56,7 +54,7 @@ Or directly edit `keybindings.json`:
 
 ### For Vim Users
 
-If you prefer Vim `<leader>` style shortcuts in normal mode like me, you can add these configurations to your `settings.json`:
+If you prefer Vim `<leader>` style shortcuts in n/v mode like me, you can add these configurations to your `settings.json`:
 
 ```json
 "vim.normalModeKeyBindingsNonRecursive": [
@@ -72,15 +70,14 @@ If you prefer Vim `<leader>` style shortcuts in normal mode like me, you can add
       "before": [",", "<CR>"],
       "commands": ["showCommit"]
    }
+],
+"vim.visualModeKeyBindingsNonRecursive": [
+   {
+      "before": [",", "w"],
+      "commands": ["openGitHubUrl"]
+   }
 ]
 ```
-
-### Examples
-
-- Press `Alt+, w` to open current file in GitHub
-- Select lines before `Alt+, w` to include line numbers
-- Press `Alt+, b` to toggle blame info
-- With blame info shown, press `Alt+, s` to view commit changes
 
 ## Known Issues
 
@@ -88,28 +85,12 @@ If you prefer Vim `<leader>` style shortcuts in normal mode like me, you can add
 
 ## Release Notes
 
-### 0.0.3
+### [0.0.5] - 2024-03-14
 
-- Changed keyboard shortcuts from `, w` to `Alt+, w`
-- Changed keyboard shortcuts from `, b l` to `Alt+, b`
-- Changed keyboard shortcuts from `, s` to `Alt+, s`
-- Fixed keyboard shortcuts in diff preview window
-- Removed legacy command support
-
-### 0.0.2
-
-- Changed command prefix to "show-me-in-github"
-- Changed "Copy GitHub URL" to "Open in GitHub"
-- Improved keyboard shortcuts customization instructions
-- Fixed activation events
-
-### 0.0.1
-
-Initial release:
-- Basic GitHub URL copying functionality
-- Git blame information display
-- Commit details viewer
-- GitHub Enterprise support
+- Changed commit details view to VS Code's built-in diff editor
+- Improved cursor positioning in diff view
+- Fixed keyboard shortcuts in Visual mode
+- Fixed keyboard shortcuts in diff view
 
 ## Contributing
 

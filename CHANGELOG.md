@@ -2,6 +2,14 @@
 
 All notable changes to the "Show Me in GitHub" extension will be documented in this file.
 
+## [0.0.5] - 2024-03-14
+
+### Changed
+- Changed commit details view to VS Code's built-in diff editor
+- Improved cursor positioning in diff view
+- Fixed keyboard shortcuts in Visual mode
+- Fixed keyboard shortcuts in diff view
+
 ## [0.0.4] - 2024-03-14
 
 ### Changed
