@@ -46,7 +46,7 @@ There are two ways to install:
    - Click Install
 
 2. From VSIX file:
-   - Download the .vsix file from [releases](https://github.com/su27/show-me-in-github/releases)
+   - Download the .vsix file from [releases](https://github.com/su27/show-in-github/releases)
    - Drag and drop the file into VS Code
    - Or install from VSIX via VS Code command palette
 
