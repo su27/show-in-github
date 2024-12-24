@@ -4,7 +4,11 @@ An extension for viewing blame information and commit details in VS Code, and co
 
 There are a lot of similar extensions, but I love vim-fugitive so much and I want to mimic part of its functionality.
 
-![screenshot](./images/screenshot.jpg)
+### The blame view
+![image](https://github.com/user-attachments/assets/7772b01a-6e0a-41a3-829e-f05fdaecb416)
+
+### The commit view
+![image](https://github.com/user-attachments/assets/ae08f18e-dcdf-4b3d-a18d-d8d7b587e846)
 
 ## Features
 
@@ -27,7 +31,7 @@ There are a lot of similar extensions, but I love vim-fugitive so much and I wan
 
 ## Installation
 
-Install from VS Code Marketplace or download VSIX file from [releases](https://github.com/su27/show-in-github/releases).
+Install from [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=su27.show-me-in-github) or download VSIX file from [releases](https://github.com/su27/show-in-github/releases).
 
 ## Usage
 

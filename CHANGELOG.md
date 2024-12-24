@@ -2,6 +2,11 @@
 
 All notable changes to the "Show Me in GitHub" extension will be documented in this file.
 
+## [0.0.6] - 2024-03-14
+
+### Fixed
+- Fixed "Open in GitHub" in diff view to correctly open commit URL instead of file URL
+
 ## [0.0.5] - 2024-03-14
 
 ### Changed

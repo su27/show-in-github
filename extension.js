@@ -410,7 +410,10 @@ async function activate(context) {
 
             // 检查是否在 diff 预览窗口中
             if (editor.document.uri.scheme === 'git-commit') {
-                const commitHash = editor.document.uri.path.split('/').pop().replace('.diff', '');
+                // 从 URI 中提取 commit hash
+                const pathParts = editor.document.uri.path.split('/');
+                const commitHash = pathParts[0].replace('.diff', '');  // 使用第一个部分作为 commit hash
+
                 const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
                 if (!workspaceRoot) {
                     vscode.window.showErrorMessage('无法确定工作区根目录');
@@ -426,7 +429,6 @@ async function activate(context) {
                 }
 
                 const githubUrl = `https://${gitInfo.domain}/${gitInfo.owner}/${gitInfo.repo}/commit/${commitHash}`;
-                // 打开链接而不是复制
                 await vscode.env.openExternal(vscode.Uri.parse(githubUrl));
                 return;
             }
