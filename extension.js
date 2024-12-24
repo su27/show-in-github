@@ -568,6 +568,37 @@ async function activate(context) {
     );
 
     context.subscriptions.push(disposable, blameDisposable, showCommitDisposable);
+
+    // 在 activate 函数中注册 Hover Provider
+    context.subscriptions.push(
+        vscode.languages.registerHoverProvider({ scheme: 'file' }, {
+            provideHover(document, position) {
+                // 只在显示 blame 信息时提供 hover
+                if (!currentBlameInfo) return;
+
+                const line = position.line;
+                const blame = currentBlameInfo[line];
+                if (!blame) return;
+
+                // 创建详细的 hover 内容
+                const content = new vscode.MarkdownString();
+                content.isTrusted = true;
+                content.supportHtml = true;
+
+                content.appendMarkdown(`### Commit Details\n\n`);
+                content.appendMarkdown(`**Hash:** \`${blame.commit}\`\n\n`);
+                content.appendMarkdown(`**Author:** ${blame.author}\n\n`);
+                content.appendMarkdown(`**Date:** ${blame.time}\n\n`);
+                content.appendMarkdown(`**Message:**\n\n${blame.summary}\n\n`);
+
+                // 添加链接到 GitHub
+                content.appendMarkdown(`[Open in GitHub](command:openGitHubUrl)\n\n`);
+                content.appendMarkdown(`[Show Commit Details](command:showCommit)`);
+
+                return new vscode.Hover(content);
+            }
+        })
+    );
 }
 
 function deactivate() {
