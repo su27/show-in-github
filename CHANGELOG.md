@@ -2,6 +2,14 @@
 
 All notable changes to the "Show Me in GitHub" extension will be documented in this file.
 
+## [0.0.7] - 2025-11-06
+
+### Improved
+- Enhanced commit details diff view cursor positioning with intelligent context-aware line matching
+- Implemented multi-layer matching algorithm: exact match → context-based fuzzy match → fallback
+- Better handling of duplicate lines in diff view by analyzing surrounding context
+- Expanded search range for improved accuracy when viewing historical commits
+
 ## [0.0.6] - 2024-03-14
 
 ### Fixed

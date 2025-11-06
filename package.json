@@ -2,7 +2,7 @@
   "name": "show-me-in-github",
   "displayName": "Show Me in GitHub",
   "description": "View files, commits and blame info in GitHub with keyboard shortcuts",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "publisher": "su27",
   "author": {
     "name": "su27"

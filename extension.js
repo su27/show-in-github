@@ -121,7 +121,10 @@ function getGitBlame(filePath, workspaceRoot) {
         return Promise.resolve(cache.blameInfo.get(cacheKey));
     }
     return new Promise((resolve, reject) => {
-        exec(`git blame --line-porcelain "${filePath}"`, { cwd: workspaceRoot }, (error, stdout) => {
+        exec(`git blame --line-porcelain "${filePath}"`, {
+            cwd: workspaceRoot,
+            maxBuffer: 50 * 1024 * 1024  // 50MB
+        }, (error, stdout) => {
             if (error) {
                 reject(error);
                 return;
@@ -211,7 +214,10 @@ function generateColorFromHash(hash, timestamp) {
 
 function getCommitDetails(commitHash, filePath, workspaceRoot) {
     return new Promise((resolve, reject) => {
-        exec(`git show ${commitHash}:${filePath}`, { cwd: workspaceRoot }, (error, stdout) => {
+        exec(`git show ${commitHash}:${filePath}`, {
+            cwd: workspaceRoot,
+            maxBuffer: 50 * 1024 * 1024  // 50MB
+        }, (error, stdout) => {
             if (error) reject(error);
             else resolve(stdout);
         });
@@ -371,21 +377,82 @@ async function activate(context) {
 
             // 定位到相应行并滚动到可见区域
             if (rightEditor) {
-                // 在 commit 内容中查找匹配的行
+                // 在 commit 内容中查找匹配的行 - 使用更智能的匹配算法
                 const lines = currentContent.split('\n');
                 let targetLine = line;
 
-                // 在当前行附近查找相同内容的行
-                const searchRange = 50;  // 搜索范围
-                const start = Math.max(0, line - searchRange);
-                const end = Math.min(lines.length, line + searchRange);
+                // 方案：使用扩展搜索范围 + 上下文匹配
+                const findBestMatch = () => {
+                    // 首先尝试精确匹配（当前行附近）
+                    const exactMatchRange = 50;
+                    const exactStart = Math.max(0, line - exactMatchRange);
+                    const exactEnd = Math.min(lines.length, line + exactMatchRange);
 
-                for (let i = start; i < end; i++) {
-                    if (lines[i].trim() === currentLineContent) {
-                        targetLine = i;
-                        break;
+                    let exactMatches = [];
+                    for (let i = exactStart; i < exactEnd; i++) {
+                        if (lines[i].trim() === currentLineContent) {
+                            exactMatches.push(i);
+                        }
                     }
-                }
+
+                    // 如果有精确匹配，选择最接近原行号的
+                    if (exactMatches.length > 0) {
+                        return exactMatches.reduce((closest, current) =>
+                            Math.abs(current - line) < Math.abs(closest - line) ? current : closest
+                        );
+                    }
+
+                    // 如果精确匹配失败，尝试模糊匹配（检查上下文行）
+                    const contextRange = 100;
+                    const contextStart = Math.max(0, line - contextRange);
+                    const contextEnd = Math.min(lines.length, line + contextRange);
+
+                    const fuzzyMatches = [];
+
+                    for (let i = contextStart; i < contextEnd; i++) {
+                        // 计算上下文相似度
+                        let contextScore = 0;
+
+                        // 检查前一行
+                        if (i > 0 && line > 0) {
+                            const currentPrevLine = editor.document.lineAt(line - 1).text.trim();
+                            if (lines[i - 1].trim() === currentPrevLine) {
+                                contextScore += 2;
+                            }
+                        }
+
+                        // 检查后一行
+                        if (i < lines.length - 1 && line < editor.document.lineCount - 1) {
+                            const currentNextLine = editor.document.lineAt(line + 1).text.trim();
+                            if (lines[i + 1].trim() === currentNextLine) {
+                                contextScore += 2;
+                            }
+                        }
+
+                        // 检查当前行
+                        if (lines[i].trim() === currentLineContent) {
+                            contextScore += 1;
+                        }
+
+                        if (contextScore > 0) {
+                            fuzzyMatches.push({ line: i, score: contextScore });
+                        }
+                    }
+
+                    // 返回最高分数的匹配
+                    if (fuzzyMatches.length > 0) {
+                        fuzzyMatches.sort((a, b) => {
+                            if (b.score !== a.score) return b.score - a.score;
+                            return Math.abs(a.line - line) - Math.abs(b.line - line);
+                        });
+                        return fuzzyMatches[0].line;
+                    }
+
+                    // 最后的备选方案：返回原行号
+                    return line;
+                };
+
+                targetLine = findBestMatch();
 
                 const position = new vscode.Position(targetLine, 0);
                 rightEditor.selection = new vscode.Selection(position, position);
