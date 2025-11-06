@@ -10,6 +10,7 @@ There are a lot of similar extensions, but I love vim-fugitive so much and I wan
 ### The commit view
 ![image](https://github.com/user-attachments/assets/ae08f18e-dcdf-4b3d-a18d-d8d7b587e846)
 
+
 ## Features
 
 - Open current file/lines in GitHub or GitHub Enterprise
